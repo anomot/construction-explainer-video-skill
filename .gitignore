@@ -11,3 +11,4 @@ artifacts/
 docs/
 *.mp3
 *.mp4
+!examples/videos/*.mp4
