@@ -1,0 +1,4 @@
+interface:
+  display_name: "建筑考证讲解视频"
+  short_description: "将一建、二建和一造考点制作为可追溯的双画幅教学视频"
+  default_prompt: "使用 $create-construction-explainer-video 把“一建建筑实务：后浇带施工要求”做成横竖双版审阅视频。"

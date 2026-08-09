@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+
+.DS_Store
+__pycache__/
+*.py[cod]
+
+# Local research, credentials, generated audio/video, and review artifacts.
+artifacts/
+docs/
+*.mp3
+*.mp4

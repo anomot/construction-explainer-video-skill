@@ -1,0 +1,11 @@
+{
+  "working_name": "建知课",
+  "background": "#F3F0E8",
+  "ink": "#24313F",
+  "accent": "#B9541B",
+  "accent_bright": "#E97932",
+  "secondary": "#526577",
+  "danger": "#A9342D",
+  "font_sans": ["Source Han Sans SC", "PingFang SC", "Noto Sans CJK SC", "sans-serif"],
+  "font_serif": ["Source Han Serif SC", "Songti SC", "serif"]
+}
