@@ -36,29 +36,39 @@ flowchart LR
 
 默认输出适配视频号、抖音、小红书、B 站和课程平台，包括 1080×1920 竖版与 1920×1080 横版。
 
-## 动态计算示例
+## 视频测试用例
 
-下面的画面来自已完成验证的组件，不是静态插画平移：
+下面五组测试均来自已完成验证的竖版审阅视频。页面中的 GIF 可直接查看动画过程；点击视频链接可以播放 12 秒带配音 MP4。完整工作流同时支持 9:16 和 16:9。
 
 ### 网络计划：前推、后退与关键线路
 
-![双代号网络计划动态过程](previews/network-plan.png)
+![双代号网络计划动态过程](previews/network-plan.gif)
+
+[▶ 播放带配音视频：新闻女声](examples/videos/network-plan.mp4)
 
 ### 放坡基坑：截面变化与体积计算
 
-![放坡基坑土方体积动态过程](previews/earthwork-volume.png)
+![放坡基坑土方体积动态过程](previews/earthwork-volume.gif)
+
+[▶ 播放带配音视频：温暖女声](examples/videos/earthwork-volume.mp4)
 
 ### 现金流：时点、折现与 NPV 汇总
 
-![现金流量图动态过程](previews/cashflow-npv.png)
+![现金流量图动态过程](previews/cashflow-npv.gif)
+
+[▶ 播放带配音视频：成熟知性女声](examples/videos/cashflow-npv.mp4)
 
 ### 构件拆分：柱、梁、板逐类展开
 
-![梁板柱体积拆分动态过程](previews/component-volume.png)
+![梁板柱体积拆分动态过程](previews/component-volume.gif)
+
+[▶ 播放带配音视频：御姐女声](examples/videos/component-volume.mp4)
 
 ### 流水施工：工作块按节拍进入
 
-![等节奏流水施工动态过程](previews/flow-schedule.png)
+![等节奏流水施工动态过程](previews/flow-schedule.gif)
+
+[▶ 播放带配音视频：甜美女声](examples/videos/flow-schedule.mp4)
 
 这些组件用结构化数据驱动 SVG/HTML 生成，公式和数字可以复算。生成式图片只用于氛围或非关键插图，不承担技术结论。
 
@@ -158,7 +168,8 @@ project/
 ├── README.md
 ├── LICENSE
 ├── .env.example
-├── previews/
+├── previews/                       # README 动画预览
+├── examples/videos/                # 12 秒带配音测试片段
 └── skills/
     └── create-construction-explainer-video/
         ├── SKILL.md
