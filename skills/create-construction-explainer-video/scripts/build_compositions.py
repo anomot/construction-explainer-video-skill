@@ -914,6 +914,70 @@ def visual_markup(segment: dict) -> str:
             "</div>"
         )
 
+    # --- Context-aware concept visuals (replaces generic house placeholder) ---
+    title = e(segment.get("title", "") + " " + segment.get("headline", ""))
+    body_text = title + " " + " ".join(bullets)
+
+    if any(k in body_text for k in ["平面体", "棱柱", "棱锥"]):
+        # Prism + Pyramid wireframe (平面立体)
+        return f'''<div class="concept-visual">
+      <svg viewBox="0 0 760 520" aria-hidden="true">
+        <!-- Pentagonal prism – front face -->
+        <path data-anim="concept-lines" class="draw" d="M140 380L140 180L260 110L380 180L380 380Z" />
+        <path data-anim="concept-lines" class="draw secondary" d="M140 180L200 145L320 215L380 180" />
+        <path data-anim="concept-lines" class="draw secondary" d="M200 145L200 345M320 215L320 415M260 110L260 75L340 130L380 180" />
+        <path data-anim="concept-lines" class="draw secondary" d="M200 345L320 415L380 380M260 75L260 55" />
+        <!-- Hidden edges dashed -->
+        <path data-anim="concept-lines" class="draw" stroke-dasharray="12 8" d="M140 380L200 415L320 415M200 415L200 345" opacity=".5"/>
+        <text x="260" y="470" text-anchor="middle" fill="var(--steel)" font-size="22" font-weight="700">五棱柱</text>
+        <!-- Pyramid -->
+        <g transform="translate(480, 60) scale(0.72)">
+          <path data-anim="concept-lines" class="draw" d="M30 420L150 220L270 420Z" />
+          <path data-anim="concept-lines" class="draw secondary" d="M30 420L150 220L270 420M150 220L150 120" />
+          <path data-anim="concept-lines" class="draw secondary" stroke-dasharray="12 8" d="M150 120L30 420M150 120L270 420" opacity=".5"/>
+          <path data-anim="concept-lines" class="draw accent" d="M10 440h280" />
+          <text x="150" y="475" text-anchor="middle" fill="var(--steel)" font-size="30" font-weight="700">四棱锥</text>
+        </g>
+        <circle data-anim="concept-pulse" class="pulse" cx="260" cy="250" r="38" />
+        <path data-anim="concept-arrow" class="accent-arrow" d="M330 250h80m-18-16 18 16 18-16" />
+      </svg>
+      {f'<div data-anim="concept-number" class="key-number">{key_number}</div>' if key_number else ''}
+    </div>'''
+
+    if any(k in body_text for k in ["曲面体", "圆柱", "圆锥", "球"]):
+        # Cylinder + Cone + Sphere (曲面立体)
+        return f'''<div class="concept-visual">
+      <svg viewBox="0 0 760 520" aria-hidden="true">
+        <!-- Cylinder -->
+        <g transform="translate(30, 40)">
+          <ellipse data-anim="concept-lines" class="draw" cx="100" cy="60" rx="80" ry="28" />
+          <path data-anim="concept-lines" class="draw" d="M20 60L20 340" />
+          <path data-anim="concept-lines" class="draw" d="M180 60L180 340" />
+          <ellipse data-anim="concept-lines" class="draw secondary" cx="100" cy="340" rx="80" ry="28" />
+          <path data-anim="concept-lines" class="draw secondary" stroke-dasharray="10 6" d="M20 340A80 28 0 0 1 180 340" opacity=".45" />
+          <text x="100" y="400" text-anchor="middle" fill="var(--steel)" font-size="22" font-weight="700">圆柱</text>
+        </g>
+        <!-- Cone -->
+        <g transform="translate(280, 40)">
+          <ellipse data-anim="concept-lines" class="draw" cx="100" cy="340" rx="80" ry="28" />
+          <path data-anim="concept-lines" class="draw" d="M20 340L100 50L180 340" />
+          <path data-anim="concept-lines" class="draw secondary" stroke-dasharray="10 6" d="M20 340A80 28 0 0 1 180 340" opacity=".45" />
+          <text x="100" y="400" text-anchor="middle" fill="var(--steel)" font-size="22" font-weight="700">圆锥</text>
+        </g>
+        <!-- Sphere -->
+        <g transform="translate(530, 70)">
+          <circle data-anim="concept-lines" class="draw" cx="85" cy="170" r="85" />
+          <ellipse data-anim="concept-lines" class="draw secondary" cx="85" cy="170" rx="85" ry="30" />
+          <ellipse data-anim="concept-lines" class="draw secondary" cx="85" cy="170" rx="30" ry="85" opacity=".5" />
+          <path data-anim="concept-lines" class="draw accent" d="M0 170h170" />
+          <text x="85" y="290" text-anchor="middle" fill="var(--steel)" font-size="22" font-weight="700">球</text>
+        </g>
+        <circle data-anim="concept-pulse" class="pulse" cx="380" cy="235" r="44" />
+      </svg>
+      {f'<div data-anim="concept-number" class="key-number">{key_number}</div>' if key_number else ''}
+    </div>'''
+
+    # Generic concept fallback
     return f'''<div class="concept-visual">
       <svg viewBox="0 0 760 520" aria-hidden="true">
         <path data-anim="concept-lines" class="draw" d="M120 420V175L375 65l265 110v245" />
