@@ -25,7 +25,7 @@
 
 题干条件 → 识别对象 → 公式与单位 → 分步代入 → 结果复算 → 易错点 → 得分点总结。
 
-推荐 `visual_type`: `calculation`、`network-plan`、`earthwork-volume`、`cashflow`、`component-volume`、`flow-schedule`；将公式放 `formula`，步骤放 `steps`，关键结果放 `key_number`。
+推荐 `visual_type`: `calculation`、`network-plan`、`earthwork-volume`、`cashflow`、`component-volume`、`flow-schedule`、`rebar-length`、`earned-value`；将公式放 `formula`，步骤放 `steps`，关键结果放 `key_number`。
 
 ### 动态图形计算
 
@@ -34,8 +34,29 @@
 - `cashflow`：用于现金流量图、逐期折现和净现值；输入 `cashflow.flows` 与 `cashflow.rate`。
 - `component-volume`：用于独立构件的几何拆分与汇总；输入 `component_volume.components`。
 - `flow-schedule`：用于等节奏流水横道与工期；输入 `flow_schedule.sections`、`processes` 和 `rhythm`。
+- `rebar-length`：用于钢筋下料长度与弯折段；输入 `rebar.segments`（分段长度与转向），分段累加条自动生成。
+- `earned-value`：用于挣值法三曲线与 CV/SV；输入 `earned_value.periods/pv/ev/ac` 与 `focus_period`。
 - 动画顺序必须与旁白一致：先画主几何，再出现尺寸/时间参数，再代入公式，最后高亮结果。
 - 每个数值例题保存独立计算底稿；数字、单位、路径和公式必须能够手工复算。
+
+### 旁白与动画节拍对位
+
+动画节拍会把各动画组均匀铺满整段旁白窗口，因此**写旁白时按动画组顺序组织语句**。各 visual_type 的组序：
+
+| visual_type | 动画组顺序（旁白按此顺序讲） |
+|---|---|
+| network-plan | net-nodes → net-edges → net-labels → net-times（早）→ net-late（迟）→ net-critical → net-metrics |
+| earthwork-volume | earth-section(+cut) → earth-dims → earth-plans → earth-steps |
+| cashflow | cash-axis → cash-arrows → cash-rate → cash-discounts → cash-result |
+| component-volume | vol-base → vol-blocks → vol-chips → vol-total |
+| flow-schedule | flow-grid → flow-blocks → flow-metrics → flow-result |
+| rebar-length | rebar-path(+bends) → rebar-dims → rebar-bars → rebar-result |
+| projection-point | proj-planes(+labels) → proj-point → proj-arrows → proj-rays → proj-feet → proj-result（system 场景无 arrows；unfold 场景无 point；缺席组写入 static_groups 以收紧节拍） |
+| earned-value | ev-axes → ev-pv → ev-ev → ev-ac → ev-gaps → ev-chips |
+| calculation | calc-formula → calc-steps → calc-result |
+| process/timeline | step-items 依次 |
+
+多步演示（同一图形连续讲多场）从第二场起用 `animation.mode: "continue"`，只讲并动画新增的组；旁白开头不要再重复描述整图。需要让某组恰好落在某句旁白上时，用 `animation.beats` 指定该组的 `at` 分数（该句起点时间 ÷ 场景总时长）。
 
 ## 旁白规范
 

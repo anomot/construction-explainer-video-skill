@@ -13,6 +13,19 @@ from pathlib import Path
 TRACKS = {"constructor-level-1", "constructor-level-2", "cost-engineer-level-1"}
 STAGES = {"input": 0, "research": 1, "content": 2, "publish": 3}
 
+STATIC_VISUAL_TYPES = {"concept", "process", "timeline", "comparison", "calculation", "summary"}
+DYNAMIC_DATA_KEYS = {
+    "projection-point": "projection",
+    "network-plan": "network",
+    "earthwork-volume": "geometry",
+    "cashflow": "cashflow",
+    "component-volume": "component_volume",
+    "flow-schedule": "flow_schedule",
+    "rebar-length": "rebar",
+    "earned-value": "earned_value",
+}
+TRANSITIONS = {"hold", "blur-crossfade", "push-up", "push-left"}
+
 
 def read_json(path: Path, errors: list[str]) -> dict:
     if not path.exists():
@@ -105,11 +118,53 @@ def main() -> int:
         if actual_ids != expected_ids:
             errors.append(f"segment IDs must be continuous from 1: {actual_ids}")
         used_claims: set[str] = set()
-        for seg in segments:
+        for position, seg in enumerate(segments):
             sid = seg.get("id", "?")
             for field in ("title", "narration", "headline", "visual_type"):
                 if not seg.get(field):
                     errors.append(f"segment {sid} missing {field}")
+            visual_type = seg.get("visual_type", "")
+            if visual_type and visual_type not in STATIC_VISUAL_TYPES | set(DYNAMIC_DATA_KEYS):
+                errors.append(f"segment {sid} has unknown visual_type: {visual_type!r}")
+            if visual_type in DYNAMIC_DATA_KEYS:
+                data_key = DYNAMIC_DATA_KEYS[visual_type]
+                data = seg.get(data_key)
+                if not isinstance(data, dict) or not data:
+                    errors.append(
+                        f"segment {sid} uses visual_type={visual_type!r} but lacks the {data_key!r} data block"
+                    )
+            transition = seg.get("transition")
+            if transition and transition not in TRANSITIONS:
+                errors.append(f"segment {sid} has unknown transition: {transition!r}")
+            anim = seg.get("animation") or {}
+            if anim:
+                mode = anim.get("mode", "build")
+                if mode not in {"build", "continue"}:
+                    errors.append(f"segment {sid} has invalid animation.mode: {mode!r}")
+                if mode == "continue":
+                    if position == 0:
+                        errors.append(f"segment {sid} cannot use animation.mode=continue as the first scene")
+                    elif segments[position - 1].get("visual_type") != visual_type:
+                        errors.append(
+                            f"segment {sid} uses continue mode but the previous scene has a different visual_type"
+                        )
+                beats = anim.get("beats", [])
+                previous_at = -1.0
+                for beat in beats:
+                    if not isinstance(beat, dict) or not beat.get("group"):
+                        errors.append(f"segment {sid} has a beat without a group")
+                        continue
+                    at = beat.get("at")
+                    if at is not None:
+                        if not isinstance(at, (int, float)) or not 0.0 <= float(at) <= 0.95:
+                            errors.append(f"segment {sid} beat {beat['group']} has at outside [0, 0.95]")
+                        elif float(at) < previous_at:
+                            warnings.append(
+                                f"segment {sid} beat {beat['group']} is earlier than the previous beat; "
+                                "check that narration order matches animation order"
+                            )
+                        else:
+                            previous_at = float(at)
             refs = seg.get("claim_ids", [])
             if not refs:
                 errors.append(f"segment {sid} has no claim_ids")
@@ -117,8 +172,16 @@ def main() -> int:
             if unknown:
                 errors.append(f"segment {sid} references unknown claims: {unknown}")
             used_claims.update(refs)
-            if len(seg.get("narration", "")) > 160:
+            narration = seg.get("narration", "")
+            if len(narration) > 160:
                 warnings.append(f"segment {sid} narration exceeds 160 Chinese characters")
+            min_duration = float(seg.get("min_duration", 5.5) or 5.5)
+            estimated = len(narration) / 4.5 + 1.55
+            if narration and min_duration > estimated + 6:
+                warnings.append(
+                    f"segment {sid} min_duration {min_duration:g}s far exceeds estimated narration time "
+                    f"{estimated:.1f}s; the scene may hold a static frame too long"
+                )
         unused = sorted(claim_ids - used_claims)
         if unused:
             warnings.append(f"verified claims not used in storyboard: {unused}")

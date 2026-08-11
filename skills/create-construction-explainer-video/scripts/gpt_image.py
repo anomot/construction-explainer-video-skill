@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""Generate a non-critical illustration with DashScope qwen-image-3.0-pro."""
+"""Generate a non-critical illustration with the OpenAI Images API (gpt-image-1).
+
+Fallback tier when neither DashScope nor an agent-builtin image tool is available.
+"""
 
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -16,8 +20,8 @@ from pathlib import Path
 
 from env_utils import load_env
 
-DEFAULT_ENDPOINT = "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation"
-SIZES = {"vertical": "1024*1536", "landscape": "1536*1024", "square": "1024*1024"}
+DEFAULT_ENDPOINT = "https://api.openai.com/v1/images/generations"
+SIZES = {"vertical": "1024x1536", "landscape": "1536x1024", "square": "1024x1024"}
 
 
 def die(message: str) -> None:
@@ -25,16 +29,18 @@ def die(message: str) -> None:
     raise SystemExit(1)
 
 
-def extract_image_url(body: dict) -> str:
-    for choice in (body.get("output") or {}).get("choices", []):
-        for item in ((choice.get("message") or {}).get("content") or []):
-            if isinstance(item, dict) and item.get("image"):
-                return str(item["image"])
-    for item in (body.get("output") or {}).get("results", []):
-        if isinstance(item, dict) and (item.get("url") or item.get("image")):
-            return str(item.get("url") or item.get("image"))
-    die("DashScope response does not contain an image URL")
-    return ""
+def extract_image(body: dict) -> bytes:
+    for item in body.get("data") or []:
+        if isinstance(item, dict) and item.get("b64_json"):
+            return base64.b64decode(item["b64_json"])
+        if isinstance(item, dict) and item.get("url"):
+            url = str(item["url"])
+            if not url.startswith("https://"):
+                die("provider returned a non-HTTPS image URL")
+            with urllib.request.urlopen(url, timeout=120) as response:
+                return response.read()
+    die("OpenAI response does not contain image data")
+    return b""
 
 
 def main() -> int:
@@ -44,10 +50,10 @@ def main() -> int:
     prompt_group.add_argument("--prompt-file", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--aspect", choices=sorted(SIZES), default="landscape")
-    parser.add_argument("--model", default="qwen-image-3.0-pro")
-    parser.add_argument("--endpoint", default=os.environ.get("DASHSCOPE_IMAGE_ENDPOINT", DEFAULT_ENDPOINT))
+    parser.add_argument("--model", default="gpt-image-1")
+    parser.add_argument("--quality", choices=("low", "medium", "high"), default="medium")
+    parser.add_argument("--endpoint", default=os.environ.get("OPENAI_IMAGE_ENDPOINT", DEFAULT_ENDPOINT))
     parser.add_argument("--env-file", type=Path)
-    parser.add_argument("--no-prompt-extend", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
@@ -57,17 +63,19 @@ def main() -> int:
         die("prompt is empty")
     payload = {
         "model": args.model,
-        "input": {"messages": [{"role": "user", "content": [{"text": prompt}]}]},
-        "parameters": {"prompt_extend": not args.no_prompt_extend, "n": 1, "size": SIZES[args.aspect], "watermark": False},
+        "prompt": prompt,
+        "n": 1,
+        "size": SIZES[args.aspect],
+        "quality": args.quality,
     }
     if args.dry_run:
         print(json.dumps(payload, ensure_ascii=False, indent=2))
         print("Dry run only; no API request sent")
         return 0
 
-    api_key = os.environ.get("DASHSCOPE_API_KEY")
+    api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
-        die("DASHSCOPE_API_KEY is not set; pass --env-file or export it locally")
+        die("OPENAI_API_KEY is not set; pass --env-file or export it locally")
     encoded = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     body: dict | None = None
     last_error: Exception | None = None
@@ -81,40 +89,33 @@ def main() -> int:
         try:
             with urllib.request.urlopen(request, timeout=240) as response:
                 body = json.loads(response.read().decode("utf-8"))
-            if body.get("code"):
-                raise RuntimeError(f"{body.get('code')}: {body.get('message', 'unknown error')}")
+            if body.get("error"):
+                raise RuntimeError(str(body["error"]))
             break
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")[:500]
             if 400 <= exc.code < 500 and exc.code != 429:
-                die(f"DashScope HTTP {exc.code}: {detail}")
+                die(f"OpenAI HTTP {exc.code}: {detail}")
             last_error = RuntimeError(f"HTTP {exc.code}: {detail}")
         except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, RuntimeError) as exc:
             last_error = exc
         if attempt < 3:
             time.sleep(attempt * 3)
     if body is None:
-        die(f"DashScope image generation failed: {last_error}")
+        die(f"OpenAI image generation failed: {last_error}")
 
-    image_url = extract_image_url(body)
-    if not image_url.startswith("https://"):
-        die("provider returned a non-HTTPS image URL")
+    content = extract_image(body)
     output = args.output.expanduser().resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        with urllib.request.urlopen(image_url, timeout=120) as response:
-            content = response.read()
-    except urllib.error.URLError as exc:
-        die(f"failed to download generated image: {exc}")
     output.write_bytes(content)
     digest = hashlib.sha256(content).hexdigest()
     metadata = {
-        "provider": "dashscope",
+        "provider": "openai",
         "model": args.model,
         "aspect": args.aspect,
         "size_requested": SIZES[args.aspect],
+        "quality": args.quality,
         "prompt": prompt,
-        "request_id": body.get("request_id"),
         "usage": body.get("usage"),
         "sha256": digest,
         "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),

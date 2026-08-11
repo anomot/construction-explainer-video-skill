@@ -38,37 +38,43 @@ flowchart LR
 
 ## 视频测试用例
 
-下面五组测试均来自已完成验证的竖版审阅视频。播放器可直接在 GitHub 页面中播放；如浏览器默认静音，点击播放器的声音按钮即可收听对应女生配音。完整工作流同时支持 9:16 和 16:9。
+下面六组测试来自已完成验证的竖版审阅视频（第二代节拍系统：动画组随旁白推进、同图多场续演不重放、字幕按句切换）。动图为 12 秒无声预览，点击对应链接可下载带配音的示例片段；完整工作流同时支持 9:16 和 16:9。
 
-### 网络计划：前推、后退与关键线路
+### 三面投影：体系搭建、一点三投影与展开
 
-**新闻女声 · 12 秒示例**
+**温润男声** · [带配音片段](examples/videos/projection-point.mp4)
 
-https://github.com/user-attachments/assets/482c9551-a88e-45ba-a5dc-d2d1acdec3aa
+![三面投影示例](previews/projection-point.gif)
 
-### 放坡基坑：截面变化与体积计算
+### 网络计划：前推、后退与关键线路（四场续演）
 
-**温暖女声 · 12 秒示例**
+**新闻女声** · [带配音片段](examples/videos/network-plan.mp4)
 
-https://github.com/user-attachments/assets/384011db-4cd3-4b85-a13c-877d4b15e596
+![网络计划示例](previews/network-plan.gif)
 
-### 现金流：时点、折现与 NPV 汇总
+### 放坡基坑：三截面代入与体积计算
 
-**成熟知性女声 · 12 秒示例**
+**阅历姐姐** · [带配音片段](examples/videos/earthwork-volume.mp4)
 
-https://github.com/user-attachments/assets/4fe014ae-dc2d-4dfb-9e54-478e24ead2a2
+![基坑土方示例](previews/earthwork-volume.gif)
 
-### 构件拆分：柱、梁、板逐类展开
+### 现金流：时点、逐期折现与 NPV
 
-**御姐女声 · 12 秒示例**
+**甜美女声** · [带配音片段](examples/videos/cashflow-npv.mp4)
 
-https://github.com/user-attachments/assets/0e90256d-da37-4c29-86c5-316dd7fbe838
+![现金流示例](previews/cashflow-npv.gif)
 
-### 流水施工：工作块按节拍进入
+### 挣值法：PV/EV/AC 三曲线与 CV/SV 偏差
 
-**甜美女声 · 12 秒示例**
+**甜美女声** · [带配音片段](examples/videos/earned-value.mp4)
 
-https://github.com/user-attachments/assets/5720f639-b5e5-4758-a40c-d2e8c89cf81e
+![挣值法示例](previews/earned-value.gif)
+
+### 钢筋下料：逐段绘制、弯折标记与分段累加
+
+**温柔学姐** · [带配音片段](examples/videos/rebar-length.mp4)
+
+![钢筋下料示例](previews/rebar-length.gif)
 
 这些组件用结构化数据驱动 SVG/HTML 生成，公式和数字可以复算。生成式图片只用于氛围或非关键插图，不承担技术结论。
 
@@ -102,8 +108,8 @@ cp -R construction-explainer-video-skill/skills/create-construction-explainer-vi
 - Node.js 22+
 - ffmpeg / ffprobe
 - HyperFrames（渲染时由 `npx` 获取）
-- MiniMax 官方语音 API：设置 `MINIMAX_API_KEY`
-- 可选生图能力：Codex `imagegen`，或设置百炼相关环境变量
+- MiniMax 官方语音 API：设置 `MINIMAX_API_KEY`（脚本自动向上查找 `.env.local`）
+- 可选生图能力：百炼 `qwen-image-3.0-pro`；agent 内置图像工具或 OpenAI `gpt-image-1` 作为备档
 
 复制环境变量模板，不要把真实凭据写进仓库：
 
@@ -194,6 +200,6 @@ project/
 
 ## 项目状态
 
-当前版本处于 MVP 验证阶段，已经跑通证据包、五类动态图形、MiniMax 多女声配音、同步字幕、双画幅渲染和自动验证。下一阶段将继续补充专业审核后的真实样片、更多工程节点组件和批量生产能力。
+当前版本处于 MVP 验证阶段，已经跑通证据包、八类确定性动态图形（网络计划、基坑土方、现金流、构件拆分、流水横道、钢筋下料、挣值三曲线、三面投影）、旁白节拍对位与多场续演动画、MiniMax 多音色配音、按句字幕、双画幅渲染和自动验证。下一阶段将继续补充专业审核后的真实样片、更多工程节点组件和批量生产能力。
 
 欢迎通过 Issue 提交考点案例、计算边界或渲染问题。

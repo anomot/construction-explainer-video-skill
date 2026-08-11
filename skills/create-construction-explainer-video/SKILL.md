@@ -55,6 +55,8 @@ python3 scripts/validate_project.py <project-dir> --stage research
 - 每段旁白使用短句，数字和单位写成正确读法；不要让 TTS 逐符号读公式。
 - 每段填写 `claim_ids`，必须映射到证据包。
 - 屏幕文字使用 `headline`、`bullets`、`key_number`、`steps` 等结构化字段，不把整段旁白堆到画面。
+- **旁白语序必须与动画组序一致**：先讲主体图形，再讲标注/参数，再讲代入，最后讲结论。动画节拍会按此顺序铺满整段旁白时间；语序错位会造成画面与配音的分裂感。
+- 同一图形的多步演示（前推→后退→关键线路等）：从第二场起设置 `"animation": {"mode": "continue"}`，图形骨架保持静止，只动画本场新增标注；需要精调时用 `animation.beats` 指定组锚点（见 `references/input-schema.md`）。
 - 首段给考试/现场钩子，末段总结高频错误、适用口径和来源截止日期。
 
 写完执行：
@@ -70,14 +72,22 @@ python3 scripts/validate_project.py <project-dir> --stage content
 非关键插图按顺序路由：
 
 1. 百炼 `qwen-image-3.0-pro`：执行 `scripts/qwen_image.py`。
-2. Codex 内置 `imagegen`：直接调用图像生成工具，不要求外部凭据。
+2. 当前 agent 自带图像生成工具时直接调用（不假设工具名称与凭据）；没有内置工具则执行 `scripts/gpt_image.py`（OpenAI `gpt-image-1`，需 `OPENAI_API_KEY`）。
 3. 失败时回退到纯 SVG/HTML，不阻断视频。
 
 任何生成图都要目视复核。发现伪文字、错误节点、钢筋或尺寸时删除错误信息，不以生成图为技术依据。
 
 ### 5. 生成配音与时间轴
 
-正式 TTS 使用 MiniMax 官方 API：`https://api.minimaxi.com/v1/t2a_v2`，模型 `speech-2.8-hd`，凭据只读 `MINIMAX_API_KEY`。
+正式 TTS 使用 MiniMax 官方 API：`https://api.minimaxi.com/v1/t2a_v2`，模型 `speech-2.8-hd`，凭据只读 `MINIMAX_API_KEY`。脚本会自动从当前目录逐级向上查找 `.env.local` / `.env`（也可用 `--env-file` 显式指定）。
+
+先查询账号实际可用音色，不要凭记忆猜 `voice_id`：
+
+```bash
+python3 scripts/minimax_tts.py --list-voices
+```
+
+再生成分段配音：
 
 ```bash
 python3 scripts/minimax_tts.py <project-dir>/content/storyboard.json \
@@ -93,7 +103,9 @@ python3 scripts/build_compositions.py <project-dir>
 bash scripts/build_video.sh <project-dir> --draft
 ```
 
-组合生成到 `composition/vertical/` 与 `composition/landscape/`。`network-plan`、`earthwork-volume`、`cashflow`、`component-volume` 与 `flow-schedule` 已提供确定性动态基线；其他技术节点、构造剖面和复杂计算必须进一步编辑 SVG，再运行 HyperFrames `check` 和渲染。
+组合生成到 `composition/vertical/` 与 `composition/landscape/`。`network-plan`、`earthwork-volume`、`cashflow`、`component-volume`、`flow-schedule`、`rebar-length`、`earned-value` 与 `projection-point` 已提供确定性动态基线；动态类型必须提供对应数据块，缺失时构建直接报错，不会静默使用演示数据。其他技术节点、构造剖面和复杂计算必须进一步编辑 SVG，再运行 HyperFrames `check` 和渲染。
+
+渲染后用 `preview/motion-<profile>.png`（每场 20%/55%/90% 三帧）确认场景内图形确实随旁白推进；只有卡片淡入视为不合格。
 
 ### 7. 联合质检与人工终审
 

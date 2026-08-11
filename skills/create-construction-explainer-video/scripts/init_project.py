@@ -82,7 +82,7 @@ def main() -> int:
         "providers": {
             "tts": {"provider": "minimax-official", "model": "speech-2.8-hd"},
             "image_primary": {"provider": "dashscope", "model": "qwen-image-3.0-pro"},
-            "image_fallback": {"provider": "codex-imagegen"},
+            "image_fallback": {"provider": "agent-builtin-imagegen", "alt": {"provider": "openai", "model": "gpt-image-1"}},
         },
     }
     rights = {

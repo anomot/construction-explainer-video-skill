@@ -37,6 +37,13 @@ def main() -> int:
     root = Path(args.project_dir).expanduser().resolve()
     errors: list[str] = []
     outputs: list[dict] = []
+    expected_total = None
+    durations_path = root / "audio/durations.json"
+    if durations_path.exists():
+        try:
+            expected_total = float(json.loads(durations_path.read_text(encoding="utf-8")).get("total") or 0) or None
+        except (json.JSONDecodeError, ValueError):
+            errors.append("audio/durations.json is not valid JSON")
     for profile, expected in EXPECTED.items():
         matches = sorted((root / "renders").glob(f"*{profile}*.mp4"))
         if not matches:
@@ -61,6 +68,11 @@ def main() -> int:
         duration = float((data.get("format") or {}).get("duration") or 0)
         if duration <= 0:
             errors.append(f"{path.name} has invalid duration")
+        elif expected_total and abs(duration - expected_total) > 1.5:
+            errors.append(
+                f"{path.name} duration {duration:.2f}s deviates from audio timeline total "
+                f"{expected_total:.2f}s by more than 1.5s"
+            )
         outputs.append(
             {
                 "profile": profile,

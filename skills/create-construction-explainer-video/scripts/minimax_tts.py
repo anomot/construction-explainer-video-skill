@@ -15,10 +15,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from env_utils import DEFAULT_MIN_DURATION, HEAD_PAD, TAIL_PAD, load_env
 
-HEAD_PAD = 0.65
-TAIL_PAD = 0.9
-DEFAULT_MIN_DURATION = 5.5
 DEFAULT_VOICE = "female-chengshu"
 DEFAULT_MODEL = "speech-2.8-hd"
 NON_RETRYABLE_CODES = {1002, 1004, 1008, 2013}
@@ -29,18 +27,50 @@ def die(message: str) -> None:
     raise SystemExit(1)
 
 
-def load_env_file(path: Path | None) -> None:
-    if path is None:
-        return
-    if not path.exists():
-        die(f"env file not found: {path}")
-    for raw in path.read_text(encoding="utf-8").splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#") or "=" not in line:
+def minimax_credentials() -> tuple[str, str]:
+    api_key = os.environ.get("MINIMAX_API_KEY")
+    if not api_key:
+        die("MINIMAX_API_KEY is not set; pass --env-file or export it locally")
+    host = os.environ.get("MINIMAX_API_HOST", "https://api.minimaxi.com").rstrip("/")
+    return api_key, host
+
+
+def list_voices() -> int:
+    """Query the MiniMax Get Voice API and print usable voice ids."""
+    api_key, host = minimax_credentials()
+    req = urllib.request.Request(
+        f"{host}/v1/get_voice",
+        data=json.dumps({"voice_type": "all"}).encode("utf-8"),
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=60) as response:
+            body = json.loads(response.read().decode("utf-8"))
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+        die(f"Get Voice API failed: {exc}")
+    base = body.get("base_resp") or {}
+    if base.get("status_code") not in (0, None):
+        die(f"Get Voice API rejected request: {base.get('status_code')}, {base.get('status_msg')}")
+    groups = {
+        "system_voice": "系统音色",
+        "voice_cloning": "克隆音色",
+        "voice_generation": "生成音色",
+    }
+    total = 0
+    for key, label in groups.items():
+        voices = body.get(key) or []
+        if not voices:
             continue
-        key, value = line.split("=", 1)
-        if key.strip() and key.strip() not in os.environ:
-            os.environ[key.strip()] = value.strip().strip('"').strip("'")
+        print(f"== {label} ({len(voices)}) ==")
+        for voice in voices:
+            voice_id = voice.get("voice_id", "?")
+            name = voice.get("voice_name") or voice.get("description") or ""
+            print(f"  {voice_id}\t{name}")
+            total += 1
+    if total == 0:
+        print("No voices returned; check account permissions")
+    return 0
 
 
 def request_minimax(
@@ -51,10 +81,7 @@ def request_minimax(
     model: str,
     pronunciation: dict,
 ) -> None:
-    api_key = os.environ.get("MINIMAX_API_KEY")
-    if not api_key:
-        die("MINIMAX_API_KEY is not set; pass --env-file or export it locally")
-    host = os.environ.get("MINIMAX_API_HOST", "https://api.minimaxi.com").rstrip("/")
+    api_key, host = minimax_credentials()
     url = f"{host}/v1/t2a_v2"
     group_id = os.environ.get("MINIMAX_GROUP_ID")
     if group_id:
@@ -157,17 +184,22 @@ def duration_seconds(path: Path) -> float:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("storyboard")
+    parser.add_argument("storyboard", nargs="?")
     parser.add_argument("--outdir", default="audio")
     parser.add_argument("--provider", choices=("minimax", "say"), default=None)
     parser.add_argument("--voice")
     parser.add_argument("--speed", type=float)
     parser.add_argument("--model")
     parser.add_argument("--env-file", type=Path)
+    parser.add_argument("--list-voices", action="store_true", help="List account voices via the Get Voice API and exit")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
 
-    load_env_file(args.env_file)
+    load_env(args.env_file)
+    if args.list_voices:
+        return list_voices()
+    if not args.storyboard:
+        die("storyboard path is required unless --list-voices is used")
     source = Path(args.storyboard).expanduser().resolve()
     if not source.exists():
         die(f"storyboard not found: {source}")
@@ -181,7 +213,7 @@ def main() -> int:
 
     config = storyboard.get("voice", {})
     provider = args.provider or ("minimax" if config.get("provider") != "say" else "say")
-    voice_id = args.voice or config.get("voice_id") or DEFAULT_VOICE
+    voice_id = args.voice or config.get("voice_id") or os.environ.get("MINIMAX_TTS_VOICE_ID") or DEFAULT_VOICE
     speed = args.speed if args.speed is not None else float(config.get("speed", 1.0))
     model = args.model or config.get("model") or os.environ.get("MINIMAX_TTS_MODEL", DEFAULT_MODEL)
     pronunciation = config.get("pronunciation_dict") or {"tone": []}
